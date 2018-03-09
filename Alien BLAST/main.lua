@@ -185,15 +185,7 @@ function levProg(event)
         
         if level < 4 then
             for i = 1, level do
-                if empty == true then
-                    print("empty")
-                    for a = #alien,1,-1 do
-                        table.remove(alien,a)
-                    end
-                    alien = {0,0,0}
-                    lives = lives - 1
-                    empty = false
-                end
+                
                 alien[i] = display.newImage("enemy.png")
                 alien[i].y, alien[i].x = 0 + i*alien[i].contentHeight - h/2 - i*h/4, w/2
                 print(alien[i].y)
