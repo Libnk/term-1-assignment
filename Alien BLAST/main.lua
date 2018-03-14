@@ -23,22 +23,27 @@ local dead = false
 local firing = false
 local empty = false
 math.randomseed(os.time())
-local gameTimer
-local livesText
-local scoreText
+local fireAi = 1
 local background2 = display.newImage("scroller.png")
 local background = display.newImage("background.png")
 local stars = display.newImage("starfield.png")
 local fireButton = display.newImage("shut.png")
+local gameTimer = display.newText("Time", w - w/8, h/8, "Mina.ttf", 18)
+local livesText = display.newText("Lives", w/8, h/8, "Mina.ttf", 18)
+local livesCounter = {}
+local scoreText
 local laser = display.newImage("laser.png")
-local enemyLaser = display.newImage("laser.png")
+local enemyLaser = display.newImage("alienLaser.png")
 local ship = display.newImage("fighter.png")
 local logo = display.newImage("Logo.png")
 local alien = {}
 
+
 --object locations
 ship.x = w/2
 ship.y = h-h/8
+local target = display.newRect(ship.x, h/4, 2, h/6)
+target:setFillColor(1,1,1,1)
 laser.x, laser.y = w/2, h/2
 laser.xScale, laser.yScale = 2, 2
 fireButton.xScale, fireButton.yScale = 1/3, 1/3
@@ -50,6 +55,8 @@ background2.xScale, background2.yScale = 3/5, 3/5
 logo.x, logo.y = w/2, 0 - logo.contentHeight
 logo.xScale, logo.yScale = 3/4, 3/4
 transition.to(logo, {time = 3000, delay = 500, y = h + logo.contentHeight})
+enemyLaser.xScale, enemyLaser.yScale = 2, 2
+
 local gameEntities = {ship, laser}
 --walls
 local lWall = display.newRect( 0, h/2, 2, h )
@@ -71,6 +78,7 @@ physics.addBody (lWall, "static")
 physics.addBody (rWall, "static")
 physics.addBody (floor, "static")
 physics.addBody (roof, "static")
+
 --ship movement event
 function ship:touch( event )
     if event.phase == "began" then
@@ -79,6 +87,7 @@ function ship:touch( event )
         if (event.x > 40 or event.x < w-40) then
         local x = (event.x - event.xStart) + self.markX
         self.x = x
+        target.x = ship.x
         end
     end
     return true
@@ -104,40 +113,65 @@ local function Update()
         laser.rotation = 0
         laser.x, laser.y = ship.x, ship.y - h/8
         end
+        local fireTime = math.random(100)
+
+
+
+
+
     end
-    
 end
 Runtime:addEventListener("enterFrame", Update)
 laser.alpha = 0
 --schüt action
 function fireButton:tap(event)
     --transition.to(background, {time = 2000, y = background.y+200})
-    if ammo > 0 and firing == false then
+    if firing == false then
         firing = true
         laser.alpha = 1
         laser:applyLinearImpulse(0, -4, 0, 0)
-        ammo = ammo - 1
     end
 
 end
 fireButton:addEventListener("tap", fireButton)
+--initial lives
+for l = 1, lives do
+    livesCounter[l] = display.newImage("lives.png", w/8 - h/16 + l*(h/32), h/6)
+    livesCounter[l].xScale, livesCounter[l].yScale = 1, 1   
+end
 
 --collision detection for laser
 function onCollision( self, event )
     if ( event.phase == "ended" ) then
             if event.other ~= roof then
+                
+                if event.other.y < 283 and event.other.y > 280 then
+                    alien[1] = nil
+                    table.remove(alien, 1)
+                    fireAi = fireAi + 1
+                    print("value", alien[1])
+                elseif event.other.y < 181 and event.other.y > 179 then
+                    alien[2] = nil
+                    table.remove(alien, 2)
+                    print("value", alien[1])
+                elseif event.other.y < 79 and event.other.y > 77 then
+                    alien[3] = nil
+                    table.remove(alien, 3)
+                    print("value", alien[1])
+                end
                 event.other:removeSelf()
+                
                 alienLives = alienLives - 1
                 laser:setLinearVelocity(0,0,0,0)
                 laser.rotation = 0
                 laser.alpha = 0
                 empty = false
                 firing = false
-                level = level + 1
                 print("level", level)
                 end
                 if alienLives == 0 then
                     print(alienLives)
+                    level = level + 1
                     levProg()
                     firing = false 
                 end
@@ -145,10 +179,6 @@ function onCollision( self, event )
               laser:setLinearVelocity(0,0,laser.x,laser.y)
                 laser.alpha = 0
                 firing = false
-                if ammo == 0 then
-                    empty = true
-                    levProg()
-                end
             end
          end
 end
@@ -176,59 +206,66 @@ function move(event)
 end
 Runtime:addEventListener( "enterFrame", move )
 
---level progression
+--level progression and alien spawning
 function levProg(event)
             print("lives", alienLives)
         score = score + level
             print("score", score)
-        alienLives = level
-        
+            for k = #alien, 1, -1 do
+                table.remove(alien, k)
+            end
+            
         if level < 4 then
             for i = 1, level do
-                if empty == true then
-                    print("empty")
-                    for a = #alien,1,-1 do
-                        table.remove(alien,a)
-                    end
-                    alien = {0,0,0}
-                    lives = lives - 1
-                    empty = false
-                end
+
+
                 alien[i] = display.newImage("enemy.png")
                 alien[i].y, alien[i].x = 0 + i*alien[i].contentHeight - h/2 - i*h/4, w/2
-                print(alien[i].y)
                 transition.to(alien[i], {time = 2000, delay = 2000, y = alien[i].y + h})
+                fireAi = level
                 function addPhys(event)
                 physics.addBody(alien[i], "dynamic", { friction=1, bounce=1 })
+                print(i, alien[i].y)
+                
                 alien[i]:applyLinearImpulse((-1)^i, 0, alien[i].x, alien[i].y)
-                ammo = level + 1
+                
                 end
                 timer.performWithDelay(4000, addPhys)
                 alienLives = i
             end
-        end
-        --else
-    
-    --[[function onCollision( self, event )
-        if ( event.phase == "ended" ) then
-                if event.other == laser then
-                    event.other:removeSelf()
-                    alienLives = alienLives - 1
-                    levProg()
-                    laser:setLinearVelocity(0,0,0,0)
-                    laser.rotation = 0
-                    laser.alpha = 0
-                    firing = false
-                    end
-                else do
-                    laser:setLinearVelocity(0,0,laser.x,laser.y)
-                    laser.alpha = 0
-                    firing = false
+        elseif level > 3 then
+         for i = 1, 3 do 
+            
+            alien[i] = display.newImage("enemy.png")
+                alien[i].y, alien[i].x = 0 + i*alien[i].contentHeight - h/2 - i*h/4, w/2
+                print(alien[i].y)
+                transition.to(alien[i], {time = 2000, delay = 2000, y = alien[i].y + h})
+                fireAi = 3
+                function addPhys(event)
+                physics.addBody(alien[i], "dynamic", { friction=1, bounce=1 })
+
+                alien[i]:applyLinearImpulse(((-1)^i)*(1 + level/3 * (i/2)), 0, alien[i].x, alien[i].y)
+
                 end
-             end
-    end]]--
+                timer.performWithDelay(4000, addPhys)
+                alienLives = i
+            end
+        end   
 end
 if alienLives == 0 then
     print(alienLives)
     levProg()
+end
+time = 60
+timeLimit()
+function timeLimit( self, event )
+timer = display.newText(time, w - w/8, h/10, "Mina.ttf", 18)
+if time < 0 then
+transition.to(gameTimer, {time = 500, y = gameTimer.y + 60})
+transition.to(gameTimer, {time = 500, y = gameTimer.y - 60})
+time = time - 1
+print("time " + time)
+end
+Runtime:addEventListener("enterFrame", timeLimit)
+
 end
